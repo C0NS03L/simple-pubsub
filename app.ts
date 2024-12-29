@@ -1,6 +1,12 @@
+//enum
+export enum MachineEventType {
+  SALE = "SALE",
+  REFILL = "REFILL",
+}
+
 // interfaces
 interface IEvent {
-  type(): string;
+  type(): MachineEventType;
   machineId(): string;
 }
 
@@ -10,15 +16,15 @@ interface ISubscriber {
 
 interface IPublishSubscribeService {
   publish(event: IEvent): void;
-  subscribe(type: string, handler: ISubscriber): void;
-  unsubscribe(type: string, handler: ISubscriber): void;
-  getSubscribers(): Map<string, ISubscriber[]>;
+  subscribe(type: MachineEventType, handler: ISubscriber): void;
+  unsubscribe(type: MachineEventType, handler: ISubscriber): void;
+  getSubscribers(): Map<MachineEventType, ISubscriber[]>;
 }
 
 // classes
 
 export class PubSubService implements IPublishSubscribeService {
-  private subscribers: Map<string, ISubscriber[]> = new Map();
+  private subscribers: Map<MachineEventType, ISubscriber[]> = new Map();
 
   constructor() {
     this.publish = this.publish.bind(this);
@@ -33,19 +39,19 @@ export class PubSubService implements IPublishSubscribeService {
     }
   }
 
-  subscribe(type: string, handler: ISubscriber): void {
+  subscribe(type: MachineEventType, handler: ISubscriber): void {
     const handlers = this.subscribers.get(type) || [];
     handlers.push(handler);
     this.subscribers.set(type, handlers);
   }
 
-  unsubscribe(type: string, handler: ISubscriber): void {
+  unsubscribe(type: MachineEventType, handler: ISubscriber): void {
     const handlers = this.subscribers.get(type) || [];
     const newHandlers = handlers.filter((h) => h !== handler);
     this.subscribers.set(type, newHandlers);
   }
 
-  getSubscribers(): Map<string, ISubscriber[]> {
+  getSubscribers(): Map<MachineEventType, ISubscriber[]> {
     return this.subscribers;
   }
 }
@@ -65,8 +71,8 @@ export class MachineSaleEvent implements IEvent {
     return this._sold;
   }
 
-  type(): string {
-    return "sale";
+  type(): MachineEventType {
+    return MachineEventType.SALE;
   }
 
   updateStock(machines: Machine[]): void {
@@ -87,8 +93,8 @@ export class MachineRefillEvent implements IEvent {
     return this._machineId;
   }
 
-  type(): string {
-    return "refill";
+  type(): MachineEventType {
+    return MachineEventType.REFILL;
   }
 
   getRefillQuantity(): number {
@@ -205,8 +211,8 @@ const logSubscribers = (subscribers: Map<string, ISubscriber[]>): void => {
 //   const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
 
 //   // subscribe the sale subscriber to the sale events
-//   pubSubService.subscribe("sale", saleSubscriber);
-//   pubSubService.subscribe("refill", refillSubscriber);
+//   pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
+//   pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
 
 //   logSubscribers(pubSubService.getSubscribers());
 
@@ -219,8 +225,8 @@ const logSubscribers = (subscribers: Map<string, ISubscriber[]>): void => {
 //   logStock(machines);
 
 //   // unsubscribe the subscriber
-//   pubSubService.unsubscribe("sale", saleSubscriber);
-//   pubSubService.unsubscribe("refill", refillSubscriber);
+//   pubSubService.unsubscribe(MachineEventType.SALE, saleSubscriber);
+//   pubSubService.unsubscribe(MachineEventType.REFILL, refillSubscriber);
 //   console.log(
 //     "-------------------Unsubscribed sale subscriber-------------------"
 //   );

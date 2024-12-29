@@ -5,6 +5,7 @@ import {
   MachineSaleSubscriber,
   MachineRefillSubscriber,
   Machine,
+  MachineEventType,
 } from "./app";
 
 describe("PubSubService", () => {
@@ -21,7 +22,7 @@ describe("PubSubService", () => {
   });
 
   test("Sub and Pub Sale", () => {
-    pubSubService.subscribe("sale", saleSubscriber);
+    pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
     const saleEvent = new MachineSaleEvent(2, "001");
     pubSubService.publish(saleEvent);
 
@@ -29,7 +30,7 @@ describe("PubSubService", () => {
   });
 
   test("Sub and Pub Refill", () => {
-    pubSubService.subscribe("refill", refillSubscriber);
+    pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
     const refillEvent = new MachineRefillEvent(3, "002");
     pubSubService.publish(refillEvent);
 
@@ -37,8 +38,8 @@ describe("PubSubService", () => {
   });
 
   test("Sale Event Unsubscribe", () => {
-    pubSubService.subscribe("sale", saleSubscriber);
-    pubSubService.unsubscribe("sale", saleSubscriber);
+    pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
+    pubSubService.unsubscribe(MachineEventType.SALE, saleSubscriber);
     const saleEvent = new MachineSaleEvent(2, "001");
     pubSubService.publish(saleEvent);
 
@@ -46,8 +47,8 @@ describe("PubSubService", () => {
   });
 
   test("Refill Event Unsubscribe", () => {
-    pubSubService.subscribe("refill", refillSubscriber);
-    pubSubService.unsubscribe("refill", refillSubscriber);
+    pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
+    pubSubService.unsubscribe(MachineEventType.REFILL, refillSubscriber);
     const refillEvent = new MachineRefillEvent(3, "002");
     pubSubService.publish(refillEvent);
 
@@ -55,8 +56,8 @@ describe("PubSubService", () => {
   });
 
   test("Multiple Events", () => {
-    pubSubService.subscribe("sale", saleSubscriber);
-    pubSubService.subscribe("refill", refillSubscriber);
+    pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
+    pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
 
     const events = [
       new MachineSaleEvent(1, "001"),
