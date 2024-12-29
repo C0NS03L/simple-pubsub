@@ -158,14 +158,14 @@ const eventGenerator = (): IEvent => {
 
 const logStock = (machines: Machine[]): void => {
   machines.map((machine) =>
-    console.log(`Machine ${machine.id} has ${machine.stockLevel} stock`)
+    console.log(`STOCK: Machine ${machine.id} has ${machine.stockLevel} stock`)
   );
 };
 
 const logEvent = (event: IEvent): void => {
   if (event instanceof MachineSaleEvent) {
     console.log(
-      `Event: ${event.type()} amount ${event.getSoldQuantity()} for machine ${event.machineId()}`
+      `EVENT: ${event.getSoldQuantity()} ${event.type()} on ${event.machineId()}`
     );
   } else if (event instanceof MachineRefillEvent) {
     console.log(
@@ -178,7 +178,7 @@ const logEvent = (event: IEvent): void => {
 
 const logSubscribers = (subscribers: Map<string, ISubscriber[]>): void => {
   subscribers.forEach((handlers, type) => {
-    console.log(`Subscribers for ${type}`);
+    console.log(`SUBSCRIBER LIST: Subscribers for ${type}`);
     handlers.map((handler) => console.log(handler));
   });
 };
@@ -219,11 +219,19 @@ const logSubscribers = (subscribers: Map<string, ISubscriber[]>): void => {
   // unsubscribe the subscriber
   pubSubService.unsubscribe("sale", saleSubscriber);
   pubSubService.unsubscribe("refill", refillSubscriber);
-  console.log("Unsubscribed sale subscriber");
+  console.log(
+    "-------------------Unsubscribed sale subscriber-------------------"
+  );
+
+  //List Subscribers
   logSubscribers(pubSubService.getSubscribers());
+
+  // more events that "should" do nothing since it's unsubbed
   const newEvents = [...Array(15)].map((i) => eventGenerator());
+
+  // post events
   newEvents.map(pubSubService.publish);
-  events.map(logEvent);
-  logSubscribers(pubSubService.getSubscribers());
+
+  // log the stock (Should not change from the last log)
   logStock(machines);
 })();
