@@ -185,55 +185,55 @@ const logSubscribers = (subscribers: Map<string, ISubscriber[]>): void => {
   });
 };
 
-// program
-(async () => {
-  // create 3 machines with a quantity of 10 stock
-  const machines: Machine[] = [
-    new Machine("001"),
-    new Machine("002"),
-    new Machine("003"),
-  ];
+// // program
+// (async () => {
+//   // create 3 machines with a quantity of 10 stock
+//   const machines: Machine[] = [
+//     new Machine("001"),
+//     new Machine("002"),
+//     new Machine("003"),
+//   ];
 
-  // create a machine sale event subscriber. inject the machines (all subscribers should do this)
-  const saleSubscriber = new MachineSaleSubscriber(machines);
-  const refillSubscriber = new MachineRefillSubscriber(machines);
+//   // create a machine sale event subscriber. inject the machines (all subscribers should do this)
+//   const saleSubscriber = new MachineSaleSubscriber(machines);
+//   const refillSubscriber = new MachineRefillSubscriber(machines);
 
-  // create the PubSub service
-  const pubSubService: IPublishSubscribeService = new PubSubService();
+//   // create the PubSub service
+//   const pubSubService: IPublishSubscribeService = new PubSubService();
 
-  // create 5 random events
-  const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
+//   // create 5 random events
+//   const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
 
-  // subscribe the sale subscriber to the sale events
-  pubSubService.subscribe("sale", saleSubscriber);
-  pubSubService.subscribe("refill", refillSubscriber);
+//   // subscribe the sale subscriber to the sale events
+//   pubSubService.subscribe("sale", saleSubscriber);
+//   pubSubService.subscribe("refill", refillSubscriber);
 
-  logSubscribers(pubSubService.getSubscribers());
+//   logSubscribers(pubSubService.getSubscribers());
 
-  events.map(logEvent);
+//   events.map(logEvent);
 
-  // publish the events
-  events.map(pubSubService.publish);
+//   // publish the events
+//   events.map(pubSubService.publish);
 
-  // log the stock
-  logStock(machines);
+//   // log the stock
+//   logStock(machines);
 
-  // unsubscribe the subscriber
-  pubSubService.unsubscribe("sale", saleSubscriber);
-  pubSubService.unsubscribe("refill", refillSubscriber);
-  console.log(
-    "-------------------Unsubscribed sale subscriber-------------------"
-  );
+//   // unsubscribe the subscriber
+//   pubSubService.unsubscribe("sale", saleSubscriber);
+//   pubSubService.unsubscribe("refill", refillSubscriber);
+//   console.log(
+//     "-------------------Unsubscribed sale subscriber-------------------"
+//   );
 
-  //List Subscribers
-  logSubscribers(pubSubService.getSubscribers());
+//   //List Subscribers
+//   logSubscribers(pubSubService.getSubscribers());
 
-  // more events that "should" do nothing since it's unsubbed
-  const newEvents = [...Array(15)].map((i) => eventGenerator());
+//   // more events that "should" do nothing since it's unsubbed
+//   const newEvents = [...Array(15)].map((i) => eventGenerator());
 
-  // post events
-  newEvents.map(pubSubService.publish);
+//   // post events
+//   newEvents.map(pubSubService.publish);
 
-  // log the stock (Should not change from the last log)
-  logStock(machines);
-})();
+//   // log the stock (Should not change from the last log)
+//   logStock(machines);
+// })();
