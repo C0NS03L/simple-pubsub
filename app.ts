@@ -17,7 +17,7 @@ interface IPublishSubscribeService {
 
 // classes
 
-class PubSubService implements IPublishSubscribeService {
+export class PubSubService implements IPublishSubscribeService {
   private subscribers: Map<string, ISubscriber[]> = new Map();
 
   constructor() {
@@ -51,7 +51,7 @@ class PubSubService implements IPublishSubscribeService {
 }
 
 // implementations
-class MachineSaleEvent implements IEvent {
+export class MachineSaleEvent implements IEvent {
   constructor(
     private readonly _sold: number,
     private readonly _machineId: string
@@ -77,7 +77,7 @@ class MachineSaleEvent implements IEvent {
   }
 }
 
-class MachineRefillEvent implements IEvent {
+export class MachineRefillEvent implements IEvent {
   constructor(
     private readonly _refill: number,
     private readonly _machineId: string
@@ -105,7 +105,7 @@ class MachineRefillEvent implements IEvent {
   }
 }
 
-class MachineSaleSubscriber implements ISubscriber {
+export class MachineSaleSubscriber implements ISubscriber {
   public machines: Machine[];
 
   constructor(machines: Machine[]) {
@@ -117,7 +117,7 @@ class MachineSaleSubscriber implements ISubscriber {
   }
 }
 
-class MachineRefillSubscriber implements ISubscriber {
+export class MachineRefillSubscriber implements ISubscriber {
   public machines: Machine[];
 
   constructor(machines: Machine[]) {
@@ -130,7 +130,7 @@ class MachineRefillSubscriber implements ISubscriber {
 }
 
 // objects
-class Machine {
+export class Machine {
   public stockLevel = 10;
   public id: string;
 
