@@ -91,6 +91,10 @@ class MachineRefillEvent implements IEvent {
     return "refill";
   }
 
+  getRefillQuantity(): number {
+    return this._refill;
+  }
+
   updateStock(machines: Machine[]): void {
     const machine = machines.find((m) => m.id === this._machineId);
     if (machine) {
@@ -169,9 +173,7 @@ const logEvent = (event: IEvent): void => {
     );
   } else if (event instanceof MachineRefillEvent) {
     console.log(
-      `Event: ${event.type()} amount ${
-        event["_refill"]
-      } for machine ${event.machineId()}`
+      `EVENT: ${event.getRefillQuantity()} ${event.type()} on ${event.machineId()}`
     );
   }
 };
