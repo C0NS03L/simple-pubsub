@@ -31,9 +31,10 @@ export class PubSubService implements IPublishSubscribeService {
   private static instance: PubSubService;
   private subscribers: Map<MachineEventType, ISubscriber[]> = new Map();
 
-  constructor() {
+  private constructor() {
     this.publish = this.publish.bind(this);
     this.subscribe = this.subscribe.bind(this);
+    this.unsubscribe = this.unsubscribe.bind(this);
   }
 
   public static getInstance(): PubSubService {
