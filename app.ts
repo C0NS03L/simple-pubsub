@@ -23,11 +23,19 @@ interface IPublishSubscribeService {
 // classes
 
 export class PubSubService implements IPublishSubscribeService {
+  private static instance: PubSubService;
   private subscribers: Map<MachineEventType, ISubscriber[]> = new Map();
 
   constructor() {
     this.publish = this.publish.bind(this);
     this.subscribe = this.subscribe.bind(this);
+  }
+
+  public static getInstance(): PubSubService {
+    if (!PubSubService.instance) {
+      PubSubService.instance = new PubSubService();
+    }
+    return PubSubService.instance;
   }
 
   publish(event: IEvent): void {
@@ -174,11 +182,11 @@ const eventGenerator = (): IEvent => {
   const saleSubscriber = new MachineSaleSubscriber(machines);
 
   // create the PubSub service
-  const pubSubService: IPublishSubscribeService = new PubSubService();
+  // const pubSubService: IPublishSubscribeService = new PubSubService();
 
   // create 5 random events
   const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
 
   // publish the events
-  events.map(pubSubService.publish);
+  events.map(PubSubService.getInstance().publish);
 })();

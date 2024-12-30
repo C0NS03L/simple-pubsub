@@ -15,7 +15,8 @@ describe("PubSubService", () => {
   let refillSubscriber: MachineRefillSubscriber;
 
   beforeEach(() => {
-    pubSubService = new PubSubService();
+    pubSubService = PubSubService.getInstance();
+    pubSubService["subscribers"].clear();
     machines = [new Machine("001"), new Machine("002"), new Machine("003")];
     saleSubscriber = new MachineSaleSubscriber(machines);
     refillSubscriber = new MachineRefillSubscriber(machines);
