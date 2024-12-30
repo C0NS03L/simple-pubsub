@@ -1,3 +1,11 @@
+//Eror Class
+export class StockError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StockError";
+  }
+}
+
 //enum
 export enum MachineEventType {
   SALE = "SALE",
@@ -87,7 +95,21 @@ export class MachineSaleEvent implements IEvent {
   updateStock(machines: Machine[]): void {
     const machine = machines.find((m) => m.id === this._machineId);
     if (machine) {
+      let stockBefore = machine.stockLevel;
       machine.stockLevel -= this._sold;
+      try {
+        if (machine.stockLevel < 0) {
+          throw new StockError("Stock level cannot be negative");
+        }
+      } catch (error: unknown) {
+        if (error instanceof StockError) {
+          console.error(error.message);
+          console.log("Rolling back stock level");
+          machine.stockLevel = stockBefore;
+        } else {
+          throw error;
+        }
+      }
       if (machine.stockLevel < STOCK_THRESHOLD) {
         const lowStockEvent = new LowStockWarningEvent(this._machineId);
         PubSubService.getInstance().publish(lowStockEvent);

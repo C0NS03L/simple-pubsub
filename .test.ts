@@ -18,6 +18,7 @@ describe("PubSubService", () => {
   let stockWarningSubscriber: StockWarningSubscriber;
   let stockOKSubscriber: StockOKSubscriber;
   let consoleSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     pubSubService = PubSubService.getInstance();
@@ -28,10 +29,12 @@ describe("PubSubService", () => {
     stockWarningSubscriber = new StockWarningSubscriber(machines);
     stockOKSubscriber = new StockOKSubscriber(machines);
     consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   test("Sub and Pub Sale", () => {
@@ -125,6 +128,14 @@ describe("PubSubService", () => {
     expect(consoleSpy).toHaveBeenCalledWith(
       "Low stock warning for machine 001"
     );
+  });
+
+  test("Negative Stock Level", () => {
+    pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
+    const saleEvent = new MachineSaleEvent(11, "001");
+    pubSubService.publish(saleEvent);
+    expect(errorSpy).toHaveBeenCalledWith("Stock level cannot be negative");
+    expect(machines[0].stockLevel).toBe(10);
   });
 
   test("Stock OK Event", () => {
