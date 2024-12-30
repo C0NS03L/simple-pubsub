@@ -72,4 +72,34 @@ describe("PubSubService", () => {
     expect(machines[1].stockLevel).toBe(8);
     expect(machines[2].stockLevel).toBe(13);
   });
+
+  test("SubUnSubEvents", () => {
+    pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
+    pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
+
+    const events = [
+      new MachineSaleEvent(1, "001"),
+      new MachineRefillEvent(5, "001"),
+      new MachineSaleEvent(2, "002"),
+      new MachineRefillEvent(3, "003"),
+    ];
+
+    events.map(pubSubService.publish);
+
+    pubSubService.unsubscribe(MachineEventType.SALE, saleSubscriber);
+    pubSubService.unsubscribe(MachineEventType.REFILL, refillSubscriber);
+
+    const events2 = [
+      new MachineSaleEvent(1, "001"),
+      new MachineRefillEvent(5, "001"),
+      new MachineSaleEvent(2, "002"),
+      new MachineRefillEvent(3, "003"),
+    ];
+
+    events2.map(pubSubService.publish);
+
+    expect(machines[0].stockLevel).toBe(14);
+    expect(machines[1].stockLevel).toBe(8);
+    expect(machines[2].stockLevel).toBe(13);
+  });
 });
