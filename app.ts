@@ -2,7 +2,12 @@
 export enum MachineEventType {
   SALE = "SALE",
   REFILL = "REFILL",
+  LOW_STOCK = "LOW_STOCK",
+  STOCK_OK = "STOCK_OK",
 }
+
+//const
+const STOCK_THRESHOLD = 3;
 
 // interfaces
 interface IEvent {
@@ -82,6 +87,10 @@ export class MachineSaleEvent implements IEvent {
     const machine = machines.find((m) => m.id === this._machineId);
     if (machine) {
       machine.stockLevel -= this._sold;
+      if (machine.stockLevel < STOCK_THRESHOLD) {
+        const lowStockEvent = new LowStockWarningEvent(this._machineId);
+        PubSubService.getInstance().publish(lowStockEvent);
+      }
     }
   }
 }
@@ -107,10 +116,40 @@ export class MachineRefillEvent implements IEvent {
   updateStock(machines: Machine[]): void {
     const machine = machines.find((m) => m.id === this._machineId);
     if (machine) {
+      let stockBefore = machine.stockLevel;
       machine.stockLevel += this._refill;
-    } else {
-      throw new Error(`Machine ${this._machineId} not found`);
+      if (
+        stockBefore < STOCK_THRESHOLD &&
+        machine.stockLevel >= STOCK_THRESHOLD
+      ) {
+        const stockOKEvent = new StockOKEvent(this._machineId);
+        PubSubService.getInstance().publish(stockOKEvent);
+      }
     }
+  }
+}
+
+export class LowStockWarningEvent implements IEvent {
+  constructor(private readonly _machineId: string) {}
+
+  machineId(): string {
+    return this._machineId;
+  }
+
+  type(): MachineEventType {
+    return MachineEventType.LOW_STOCK;
+  }
+}
+
+export class StockOKEvent implements IEvent {
+  constructor(private readonly _machineId: string) {}
+
+  machineId(): string {
+    return this._machineId;
+  }
+
+  type(): MachineEventType {
+    return MachineEventType.STOCK_OK;
   }
 }
 
@@ -135,6 +174,30 @@ export class MachineRefillSubscriber implements ISubscriber {
 
   handle(event: MachineRefillEvent): void {
     event.updateStock(this.machines);
+  }
+}
+
+export class StockWarningSubscriber implements ISubscriber {
+  public machines: Machine[];
+
+  constructor(machines: Machine[]) {
+    this.machines = machines;
+  }
+
+  handle(event: LowStockWarningEvent): void {
+    console.log(`Low stock warning for machine ${event.machineId()}`);
+  }
+}
+
+export class StockOKSubscriber implements ISubscriber {
+  public machines: Machine[];
+
+  constructor(machines: Machine[]) {
+    this.machines = machines;
+  }
+
+  handle(event: StockOKEvent): void {
+    console.log(`Stock OK for machine ${event.machineId()}`);
   }
 }
 
