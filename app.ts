@@ -18,7 +18,6 @@ interface IPublishSubscribeService {
   publish(event: IEvent): void;
   subscribe(type: MachineEventType, handler: ISubscriber): void;
   unsubscribe(type: MachineEventType, handler: ISubscriber): void;
-  getSubscribers(): Map<MachineEventType, ISubscriber[]>;
 }
 
 // classes
@@ -49,10 +48,6 @@ export class PubSubService implements IPublishSubscribeService {
     const handlers = this.subscribers.get(type) || [];
     const newHandlers = handlers.filter((h) => h !== handler);
     this.subscribers.set(type, newHandlers);
-  }
-
-  getSubscribers(): Map<MachineEventType, ISubscriber[]> {
-    return this.subscribers;
   }
 }
 
@@ -166,80 +161,24 @@ const eventGenerator = (): IEvent => {
   return new MachineRefillEvent(refillQty, randomMachine());
 };
 
-const logStock = (machines: Machine[]): void => {
-  machines.map((machine) =>
-    console.log(`STOCK: Machine ${machine.id} has ${machine.stockLevel} stock`)
-  );
-};
+// program
+(async () => {
+  // create 3 machines with a quantity of 10 stock
+  const machines: Machine[] = [
+    new Machine("001"),
+    new Machine("002"),
+    new Machine("003"),
+  ];
 
-const logEvent = (event: IEvent): void => {
-  if (event instanceof MachineSaleEvent) {
-    console.log(
-      `EVENT: ${event.getSoldQuantity()} ${event.type()} on ${event.machineId()}`
-    );
-  } else if (event instanceof MachineRefillEvent) {
-    console.log(
-      `EVENT: ${event.getRefillQuantity()} ${event.type()} on ${event.machineId()}`
-    );
-  }
-};
+  // create a machine sale event subscriber. inject the machines (all subscribers should do this)
+  const saleSubscriber = new MachineSaleSubscriber(machines);
 
-const logSubscribers = (subscribers: Map<string, ISubscriber[]>): void => {
-  subscribers.forEach((handlers, type) => {
-    console.log(`SUBSCRIBER LIST: Subscribers for ${type}`);
-    handlers.map((handler) => console.log(handler));
-  });
-};
+  // create the PubSub service
+  const pubSubService: IPublishSubscribeService = new PubSubService();
 
-// // program
-// (async () => {
-//   // create 3 machines with a quantity of 10 stock
-//   const machines: Machine[] = [
-//     new Machine("001"),
-//     new Machine("002"),
-//     new Machine("003"),
-//   ];
+  // create 5 random events
+  const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
 
-//   // create a machine sale event subscriber. inject the machines (all subscribers should do this)
-//   const saleSubscriber = new MachineSaleSubscriber(machines);
-//   const refillSubscriber = new MachineRefillSubscriber(machines);
-
-//   // create the PubSub service
-//   const pubSubService: IPublishSubscribeService = new PubSubService();
-
-//   // create 5 random events
-//   const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
-
-//   // subscribe the sale subscriber to the sale events
-//   pubSubService.subscribe(MachineEventType.SALE, saleSubscriber);
-//   pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
-
-//   logSubscribers(pubSubService.getSubscribers());
-
-//   events.map(logEvent);
-
-//   // publish the events
-//   events.map(pubSubService.publish);
-
-//   // log the stock
-//   logStock(machines);
-
-//   // unsubscribe the subscriber
-//   pubSubService.unsubscribe(MachineEventType.SALE, saleSubscriber);
-//   pubSubService.unsubscribe(MachineEventType.REFILL, refillSubscriber);
-//   console.log(
-//     "-------------------Unsubscribed sale subscriber-------------------"
-//   );
-
-//   //List Subscribers
-//   logSubscribers(pubSubService.getSubscribers());
-
-//   // more events that "should" do nothing since it's unsubbed
-//   const newEvents = [...Array(15)].map((i) => eventGenerator());
-
-//   // post events
-//   newEvents.map(pubSubService.publish);
-
-//   // log the stock (Should not change from the last log)
-//   logStock(machines);
-// })();
+  // publish the events
+  events.map(pubSubService.publish);
+})();
