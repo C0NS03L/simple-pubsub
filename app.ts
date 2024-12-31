@@ -33,8 +33,15 @@ interface IPublishSubscribeService {
   unsubscribe(type: MachineEventType, handler: ISubscriber): void;
 }
 
-// classes
+export interface IMachineRepository {
+  findById(id: string): Machine | undefined;
+  findAll(): Machine[];
+  save(machine: Machine): void;
+  update(machine: Machine): void;
+  delete(id: string): void;
+}
 
+// classes
 export class PubSubService implements IPublishSubscribeService {
   private static instance: PubSubService;
   private subscribers: Map<MachineEventType, ISubscriber[]> = new Map();
@@ -74,6 +81,38 @@ export class PubSubService implements IPublishSubscribeService {
 }
 
 // implementations
+export class MachineRepository implements IMachineRepository {
+  private machines: Map<string, Machine> = new Map();
+
+  findById(id: string): Machine | undefined {
+    return this.machines.get(id);
+  }
+
+  findAll(): Machine[] {
+    return Array.from(this.machines.values());
+  }
+
+  save(machine: Machine): void {
+    if (this.machines.has(machine.id)) {
+      throw new Error(`Machine with id ${machine.id} already exists`);
+    }
+    this.machines.set(machine.id, machine);
+  }
+
+  update(machine: Machine): void {
+    if (!this.machines.has(machine.id)) {
+      throw new Error(`Machine with id ${machine.id} not found`);
+    }
+    this.machines.set(machine.id, machine);
+  }
+
+  delete(id: string): void {
+    if (!this.machines.delete(id)) {
+      throw new Error(`Machine with id ${id} not found`);
+    }
+  }
+}
+
 export class MachineSaleEvent implements IEvent {
   constructor(
     private readonly _sold: number,
@@ -177,35 +216,59 @@ export class StockOKEvent implements IEvent {
 }
 
 export class MachineSaleSubscriber implements ISubscriber {
-  public machines: Machine[];
-
-  constructor(machines: Machine[]) {
-    this.machines = machines;
-  }
+  constructor(private repository: IMachineRepository) {}
 
   handle(event: MachineSaleEvent): void {
-    event.updateStock(this.machines);
+    const machine = this.repository.findById(event.machineId());
+    if (machine) {
+      let stockBefore = machine.stockLevel;
+      machine.stockLevel -= event.getSoldQuantity();
+      try {
+        if (machine.stockLevel < 0) {
+          throw new StockError("Stock level cannot be negative");
+        }
+        this.repository.update(machine);
+      } catch (error: unknown) {
+        if (error instanceof StockError) {
+          console.error(error.message);
+          console.log("Rolling back stock level");
+          machine.stockLevel = stockBefore;
+          this.repository.update(machine);
+        } else {
+          throw error;
+        }
+      }
+      if (machine.stockLevel < STOCK_THRESHOLD) {
+        const lowStockEvent = new LowStockWarningEvent(event.machineId());
+        PubSubService.getInstance().publish(lowStockEvent);
+      }
+    }
   }
 }
 
 export class MachineRefillSubscriber implements ISubscriber {
-  public machines: Machine[];
-
-  constructor(machines: Machine[]) {
-    this.machines = machines;
-  }
+  constructor(private repository: IMachineRepository) {}
 
   handle(event: MachineRefillEvent): void {
-    event.updateStock(this.machines);
+    const machine = this.repository.findById(event.machineId());
+    if (machine) {
+      let stockBefore = machine.stockLevel;
+      machine.stockLevel += event.getRefillQuantity();
+      this.repository.update(machine);
+
+      if (
+        stockBefore < STOCK_THRESHOLD &&
+        machine.stockLevel >= STOCK_THRESHOLD
+      ) {
+        const stockOKEvent = new StockOKEvent(event.machineId());
+        PubSubService.getInstance().publish(stockOKEvent);
+      }
+    }
   }
 }
 
 export class StockWarningSubscriber implements ISubscriber {
-  public machines: Machine[];
-
-  constructor(machines: Machine[]) {
-    this.machines = machines;
-  }
+  constructor(private repository: IMachineRepository) {}
 
   handle(event: LowStockWarningEvent): void {
     console.log(`Low stock warning for machine ${event.machineId()}`);
@@ -213,11 +276,7 @@ export class StockWarningSubscriber implements ISubscriber {
 }
 
 export class StockOKSubscriber implements ISubscriber {
-  public machines: Machine[];
-
-  constructor(machines: Machine[]) {
-    this.machines = machines;
-  }
+  constructor(private repository: IMachineRepository) {}
 
   handle(event: StockOKEvent): void {
     console.log(`Stock OK for machine ${event.machineId()}`);
@@ -258,21 +317,23 @@ const eventGenerator = (): IEvent => {
 // program
 (async () => {
   // create 3 machines with a quantity of 10 stock
-  const machines: Machine[] = [
-    new Machine("001"),
-    new Machine("002"),
-    new Machine("003"),
-  ];
+
+  const machineRepository = new MachineRepository();
+
+  // save the machines
+  machineRepository.save(new Machine("001"));
+  machineRepository.save(new Machine("002"));
+  machineRepository.save(new Machine("003"));
 
   // create a machine sale event subscriber. inject the machines (all subscribers should do this)
-  const saleSubscriber = new MachineSaleSubscriber(machines);
+  const saleSubscriber = new MachineSaleSubscriber(machineRepository);
 
   // create the PubSub service
-  // const pubSubService: IPublishSubscribeService = new PubSubService();
+  const pubSubService: IPublishSubscribeService = PubSubService.getInstance();
 
   // create 5 random events
   const events = [1, 2, 3, 4, 5].map((i) => eventGenerator());
 
   // publish the events
-  events.map(PubSubService.getInstance().publish);
+  events.map(pubSubService.publish);
 })();

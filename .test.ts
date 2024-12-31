@@ -7,12 +7,14 @@ import {
   StockWarningSubscriber,
   StockOKSubscriber,
   Machine,
+  MachineRepository,
   MachineEventType,
 } from "./app";
 
 describe("PubSubService", () => {
   let pubSubService: PubSubService;
   let machines: Machine[];
+  let machineRepository: MachineRepository;
   let saleSubscriber: MachineSaleSubscriber;
   let refillSubscriber: MachineRefillSubscriber;
   let stockWarningSubscriber: StockWarningSubscriber;
@@ -23,11 +25,14 @@ describe("PubSubService", () => {
   beforeEach(() => {
     pubSubService = PubSubService.getInstance();
     pubSubService["subscribers"].clear();
-    machines = [new Machine("001"), new Machine("002"), new Machine("003")];
-    saleSubscriber = new MachineSaleSubscriber(machines);
-    refillSubscriber = new MachineRefillSubscriber(machines);
-    stockWarningSubscriber = new StockWarningSubscriber(machines);
-    stockOKSubscriber = new StockOKSubscriber(machines);
+    machineRepository = new MachineRepository();
+    machineRepository.save(new Machine("001"));
+    machineRepository.save(new Machine("002"));
+    machineRepository.save(new Machine("003"));
+    saleSubscriber = new MachineSaleSubscriber(machineRepository);
+    refillSubscriber = new MachineRefillSubscriber(machineRepository);
+    stockWarningSubscriber = new StockWarningSubscriber(machineRepository);
+    stockOKSubscriber = new StockOKSubscriber(machineRepository);
     consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
     errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -42,7 +47,7 @@ describe("PubSubService", () => {
     const saleEvent = new MachineSaleEvent(2, "001");
     pubSubService.publish(saleEvent);
 
-    expect(machines[0].stockLevel).toBe(8);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(8);
   });
 
   test("Sub and Pub Refill", () => {
@@ -50,7 +55,7 @@ describe("PubSubService", () => {
     const refillEvent = new MachineRefillEvent(3, "002");
     pubSubService.publish(refillEvent);
 
-    expect(machines[1].stockLevel).toBe(13);
+    expect(machineRepository.findById("002")?.stockLevel).toBe(13);
   });
 
   test("Sale Event Unsubscribe", () => {
@@ -59,7 +64,7 @@ describe("PubSubService", () => {
     const saleEvent = new MachineSaleEvent(2, "001");
     pubSubService.publish(saleEvent);
 
-    expect(machines[0].stockLevel).toBe(10);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(10);
   });
 
   test("Refill Event Unsubscribe", () => {
@@ -68,7 +73,7 @@ describe("PubSubService", () => {
     const refillEvent = new MachineRefillEvent(3, "002");
     pubSubService.publish(refillEvent);
 
-    expect(machines[1].stockLevel).toBe(10);
+    expect(machineRepository.findById("002")?.stockLevel).toBe(10);
   });
 
   test("Multiple Events", () => {
@@ -84,9 +89,9 @@ describe("PubSubService", () => {
 
     events.map(pubSubService.publish);
 
-    expect(machines[0].stockLevel).toBe(14);
-    expect(machines[1].stockLevel).toBe(8);
-    expect(machines[2].stockLevel).toBe(13);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(14);
+    expect(machineRepository.findById("002")?.stockLevel).toBe(8);
+    expect(machineRepository.findById("003")?.stockLevel).toBe(13);
   });
 
   test("SubUnSub Events", () => {
@@ -114,9 +119,9 @@ describe("PubSubService", () => {
 
     events2.map(pubSubService.publish);
 
-    expect(machines[0].stockLevel).toBe(14);
-    expect(machines[1].stockLevel).toBe(8);
-    expect(machines[2].stockLevel).toBe(13);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(14);
+    expect(machineRepository.findById("002")?.stockLevel).toBe(8);
+    expect(machineRepository.findById("003")?.stockLevel).toBe(13);
   });
 
   test("Low Stock Warning Event", () => {
@@ -124,7 +129,7 @@ describe("PubSubService", () => {
     pubSubService.subscribe(MachineEventType.LOW_STOCK, stockWarningSubscriber);
     const saleEvent = new MachineSaleEvent(8, "001");
     pubSubService.publish(saleEvent);
-    expect(machines[0].stockLevel).toBe(2);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(2);
     expect(consoleSpy).toHaveBeenCalledWith(
       "Low stock warning for machine 001"
     );
@@ -135,18 +140,22 @@ describe("PubSubService", () => {
     const saleEvent = new MachineSaleEvent(11, "001");
     pubSubService.publish(saleEvent);
     expect(errorSpy).toHaveBeenCalledWith("Stock level cannot be negative");
-    expect(machines[0].stockLevel).toBe(10);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(10);
   });
 
   test("Stock OK Event", () => {
     pubSubService.subscribe(MachineEventType.REFILL, refillSubscriber);
     pubSubService.subscribe(MachineEventType.STOCK_OK, stockOKSubscriber);
 
-    machines[0].stockLevel = 2; // Set initial stock level below threshold
+    const machine = machineRepository.findById("001");
+    if (machine) {
+      machine.stockLevel = 2;
+    }
+
     const refillEvent = new MachineRefillEvent(3, "001");
     pubSubService.publish(refillEvent);
 
-    expect(machines[0].stockLevel).toBe(5);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(5);
     expect(consoleSpy).toHaveBeenCalledWith("Stock OK for machine 001");
   });
 
@@ -156,22 +165,25 @@ describe("PubSubService", () => {
     pubSubService.subscribe(MachineEventType.LOW_STOCK, stockWarningSubscriber);
     pubSubService.subscribe(MachineEventType.STOCK_OK, stockOKSubscriber);
 
-    machines[0].stockLevel = 5; // Set initial stock level at threshold
+    const machine = machineRepository.findById("001");
+    if (machine) {
+      machine.stockLevel = 5;
+    }
     const refillEvent = new MachineRefillEvent(5, "001");
     pubSubService.publish(refillEvent);
 
     expect(consoleSpy).not.toHaveBeenCalledWith("Stock OK for machine 001");
-    expect(machines[0].stockLevel).toBe(10);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(10);
 
     const saleEvent = new MachineSaleEvent(8, "001");
     pubSubService.publish(saleEvent);
 
-    expect(machines[0].stockLevel).toBe(2);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(2);
 
     const refillEvent2 = new MachineRefillEvent(3, "001");
     pubSubService.publish(refillEvent2);
 
-    expect(machines[0].stockLevel).toBe(5);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(5);
     expect(consoleSpy).toHaveBeenCalledWith("Stock OK for machine 001");
   });
 
@@ -183,14 +195,14 @@ describe("PubSubService", () => {
 
     const saleEvent = new MachineSaleEvent(8, "001");
     pubSubService.publish(saleEvent);
-    expect(machines[0].stockLevel).toBe(2);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(2);
     expect(consoleSpy).toHaveBeenCalledWith(
       "Low stock warning for machine 001"
     );
 
     const refillEvent = new MachineRefillEvent(3, "001");
     pubSubService.publish(refillEvent);
-    expect(machines[0].stockLevel).toBe(5);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(5);
     expect(consoleSpy).toHaveBeenCalledWith("Stock OK for machine 001");
   });
 
@@ -202,7 +214,7 @@ describe("PubSubService", () => {
 
     const saleEvent = new MachineSaleEvent(8, "001");
     pubSubService.publish(saleEvent);
-    expect(machines[0].stockLevel).toBe(2);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(2);
     expect(consoleSpy).toHaveBeenCalledWith(
       "Low stock warning for machine 001"
     );
@@ -212,14 +224,14 @@ describe("PubSubService", () => {
     );
     const refillEvent = new MachineRefillEvent(3, "001");
     pubSubService.publish(refillEvent);
-    expect(machines[0].stockLevel).toBe(5);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(5);
     expect(consoleSpy).toHaveBeenCalledWith("Stock OK for machine 001");
 
     consoleSpy.mockRestore();
 
     const saleEvent2 = new MachineSaleEvent(4, "001");
     pubSubService.publish(saleEvent2);
-    expect(machines[0].stockLevel).toBe(1);
+    expect(machineRepository.findById("001")?.stockLevel).toBe(1);
     expect(consoleSpy).not.toHaveBeenCalledWith(
       "Low stock warning for machine 001"
     );
